@@ -23,6 +23,7 @@ export = (nodecg: NodeCG): ExtensionReturn => {
   require('./twitch-api');
   require('./srcom-api');
   require('./ffz-ws');
+  require('./fr-splitbtn-ws');
 
   return {
     listenFor,

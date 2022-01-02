@@ -1,7 +1,8 @@
 /* eslint import/prefer-default-export: off */
 
 import clone from 'clone';
-import livesplitCore from 'livesplit-core';
+import livesplitCore, { TimerPhase } from 'livesplit-core';
+import { resolve } from 'path';
 import * as events from './util/events';
 import { msToTimeStr, processAck, timeStrToMS } from './util/helpers';
 import { get } from './util/nodecg';
@@ -58,10 +59,23 @@ function setGameTime(ms: number): void {
 }
 
 /**
+ * Get timer state.
+ */
+export async function getTimerState(): Promise<number> {
+  try {
+    const timerPhase = timer.currentPhase();
+    return timerPhase
+  } catch (err) {
+    nodecg.log.debug('[Timer] Cannot get timer state:', err);
+    throw err;
+  }
+}
+
+/**
  * Start/resume the timer, depending on the current state.
  * @param force Force the timer to start, even if it's state is running/changes are disabled.
  */
-async function startTimer(force?: boolean): Promise<void> {
+export async function startTimer(force?: boolean): Promise<void> {
   try {
     // Error if the timer is disabled.
     if (!force && timerChangesDisabled.value) {
@@ -94,7 +108,7 @@ async function startTimer(force?: boolean): Promise<void> {
 /**
  * Pause the timer.
  */
-async function pauseTimer(): Promise<void> {
+export async function pauseTimer(): Promise<void> {
   try {
     // Error if the timer is disabled.
     if (timerChangesDisabled.value) {
@@ -143,7 +157,7 @@ export async function resetTimer(force?: boolean): Promise<void> {
  * @param id Team's ID you wish to have finish (if there is an active run).
  * @param forfeit Specify this if the team has forfeit.
  */
-async function stopTimer(id?: string, forfeit?: boolean): Promise<void> {
+export async function stopTimer(id?: string, forfeit?: boolean): Promise<void> {
   try {
     // Error if the timer is disabled.
     if (timerChangesDisabled.value) {
@@ -303,7 +317,13 @@ if (timerRep.value.state === 'running') {
     .catch(() => { /* catch error if needed, for safety */ });
 }
 
+
 // NodeCG messaging system.
+nodecg.listenFor('timerGetState', (data, ack) => {
+  getTimerState()
+    .then((timerPhase) => processAck(ack, null, timerPhase))
+    .catch((err) => processAck(ack, err));
+});
 nodecg.listenFor('timerStart', (data, ack) => {
   startTimer()
     .then(() => processAck(ack, null))
